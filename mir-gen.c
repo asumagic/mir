@@ -4382,10 +4382,10 @@ static void gvn_modify (gen_ctx_t gen_ctx) {
     for (bb_insn = DLIST_HEAD (bb_insn_t, bb->bb_insns); bb_insn != NULL; bb_insn = next_bb_insn) {
       expr_t e, new_e;
       mem_expr_t prev_mem_expr, mem_expr;
-      MIR_op_t op;
-      int add_def_p, const_p, cont_p;
+      MIR_op_t op, add_ext_temp_op;
+      int add_def_p, add_ext_p, const_p, cont_p;
       MIR_type_t type;
-      MIR_insn_code_t move_code;
+      MIR_insn_code_t move_code, ext_code;
       MIR_insn_t mem_insn, new_insn, new_insn2, def_insn, after, insn = bb_insn->insn;
       ssa_edge_t se, se2;
       bb_insn_t def_bb_insn, new_bb_copy_insn;
@@ -4683,11 +4683,38 @@ static void gvn_modify (gen_ctx_t gen_ctx) {
               copy_gvn_info (bb_insn, mem_bb_insn);
               print_bb_insn_value (gen_ctx, bb_insn);
               temp_reg = mem_expr->temp_reg;
+              add_ext_p = TRUE;
+              switch (op_ref->u.mem.type) {
+                case MIR_T_I8:
+                  ext_code = MIR_EXT8;
+                  break;
+                case MIR_T_I16:
+                  ext_code = MIR_EXT16;
+                  break;
+                case MIR_T_I32:
+                  ext_code = MIR_EXT32;
+                  break;
+                case MIR_T_U8:
+                  ext_code = MIR_UEXT8;
+                  break;
+                case MIR_T_U16:
+                  ext_code = MIR_UEXT16;
+                  break;
+                case MIR_T_U32:
+                  ext_code = MIR_UEXT32;
+                  break;
+                default:
+                  add_ext_p = FALSE;
+              }
+              /* @asumagic got something wrong: wanting to emit an integer ext
+                 with something that is not an integer move?? */
+              gen_assert(insn->code == MIR_MOV || !add_ext_p);
+
               add_def_p = temp_reg == MIR_NON_VAR;
               if (add_def_p) {
                 mem_expr->temp_reg = temp_reg
                   = get_expr_temp_reg (gen_ctx, mem_expr->insn, &mem_expr->temp_reg);
-                new_insn = MIR_new_insn (ctx, insn->code, _MIR_new_var_op (ctx, temp_reg),
+                new_insn = MIR_new_insn (ctx, add_ext_p ? ext_code : insn->code, _MIR_new_var_op (ctx, temp_reg),
                                          op_ref == &mem_insn->ops[0] ? mem_insn->ops[1]
                                                                      : mem_insn->ops[0]);
                 new_insn->ops[1].data = NULL; /* remove ssa edge taken from load/store op */
