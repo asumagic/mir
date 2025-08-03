@@ -6675,6 +6675,12 @@ static void jump_opt (gen_ctx_t gen_ctx) {
     DEBUG (1, { fprintf (debug_file, "%ld deleted unrechable bb insns\n", bb_deleted_insns_num); });
   }
   bitmap_clear (temp_bitmap);
+  for (MIR_lref_data_t lref = curr_func_item->u.func->first_lref; lref != NULL;
+       lref = lref->next) {
+    bitmap_set_bit_p (temp_bitmap, lref->label->ops[0].u.u);
+    if (lref->label2 != NULL)
+      bitmap_set_bit_p (temp_bitmap, lref->label2->ops[0].u.u);
+  }
   for (bb = DLIST_EL (bb_t, curr_cfg->bbs, 2); bb != NULL; bb = DLIST_NEXT (bb_t, bb)) {
     bb_insn_t bb_insn;
     int i, start_nop, bound_nop;
