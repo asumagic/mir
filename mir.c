@@ -818,9 +818,9 @@ static void remove_item (MIR_context_t ctx, MIR_item_t item) {
   case MIR_func_item:
     remove_func_insns (ctx, item, &item->u.func->insns);
     remove_func_insns (ctx, item, &item->u.func->original_insns);
-    VARR_DESTROY (MIR_var_t, item->u.func->vars);
+    if (item->u.func->vars != NULL) VARR_DESTROY (MIR_var_t, item->u.func->vars);
     if (item->u.func->global_vars != NULL) VARR_DESTROY (MIR_var_t, item->u.func->global_vars);
-    func_regs_finish (ctx, item->u.func);
+    if (item->u.func->internal != NULL) func_regs_finish (ctx, item->u.func);
     MIR_free (ctx->alloc, item->u.func);
     break;
   case MIR_proto_item:
@@ -922,6 +922,41 @@ void MIR_finish (MIR_context_t ctx) {
   MIR_free (ctx->alloc, ctx->alias_ctx);
   MIR_free (ctx->alloc, ctx);
   ctx = NULL;
+}
+
+static void minimize_function (MIR_context_t ctx, MIR_module_t module, MIR_item_t item) {
+  switch (item->item_type) {
+  case MIR_func_item:
+    remove_func_insns (ctx, item, &item->u.func->insns);
+    remove_func_insns (ctx, item, &item->u.func->original_insns);
+    VARR_DESTROY (MIR_var_t, item->u.func->vars);
+    item->u.func->vars = NULL;
+    if (item->u.func->global_vars != NULL) {
+      VARR_DESTROY (MIR_var_t, item->u.func->global_vars);
+      item->u.func->global_vars = NULL;
+    }
+    func_regs_finish (ctx, item->u.func);
+    if (item->data != NULL) {
+      MIR_free (ctx->alloc, item->data);
+      item->data = NULL;
+    }
+    break;
+  default: break;
+  }
+}
+
+void MIR_minimize_module (MIR_context_t ctx, MIR_module_t module) {
+  for (MIR_item_t item = DLIST_HEAD (MIR_item_t, module->items); item != NULL;) {
+    MIR_item_t next = DLIST_NEXT (MIR_item_t, item);
+    minimize_function(ctx, module, item);
+    item = next;
+  }
+}
+
+void MIR_minimize (MIR_context_t ctx) {
+  // destroy inlining info
+  simplify_finish (ctx);
+  simplify_init (ctx);
 }
 
 MIR_module_t MIR_new_module (MIR_context_t ctx, const char *name) {
