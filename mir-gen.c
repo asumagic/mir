@@ -4615,6 +4615,7 @@ static void gvn_modify (gen_ctx_t gen_ctx) {
       case MIR_DMOV:
       case MIR_LDMOV:
         if (insn->ops[0].mode == MIR_OP_VAR_MEM) { /* store */
+          if (optimize_level < 3) continue;
           if ((se = insn->ops[1].data) != NULL && se->def->alloca_flag) full_escape_p = TRUE;
           se = insn->ops[0].data; /* address def actually */
           mem_expr = find_mem_expr (gen_ctx, insn);
@@ -4661,6 +4662,7 @@ static void gvn_modify (gen_ctx_t gen_ctx) {
           print_bb_insn_value (gen_ctx, bb_insn);
           continue;
         } else if (insn->ops[1].mode == MIR_OP_VAR_MEM) { /* load */
+          if (optimize_level < 3) continue;
           if (insn->ops[0].data == NULL) continue;        /* dead load */
           se = insn->ops[1].data;                         /* address def actually */
           mem_expr = find_mem_expr (gen_ctx, insn);
