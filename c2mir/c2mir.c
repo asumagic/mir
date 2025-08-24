@@ -14230,12 +14230,14 @@ int c2mir_compile (MIR_context_t ctx, struct c2mir_options *ops, int (*getc_func
           if (strcmp (source_name, COMMAND_LINE_SOURCE_NAME) == 0) {
             MIR_output_module (ctx, c2m_options->message_file, m);
           } else if (output_file != NULL) {
+#ifndef MIR_NO_IO 
             (c2m_options->asm_p ? MIR_output_module : MIR_write_module) (ctx, output_file, m);
             if (ferror (output_file) || fclose (output_file)) {
               fprintf (c2m_options->message_file, "C2MIR error in writing mir for source file %s\n",
                        source_name);
               n_errors++;
             }
+#endif
           }
         }
         MIR_finish_module (ctx);
